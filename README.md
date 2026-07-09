@@ -68,7 +68,7 @@ Three Vercel projects, all pointing at this repo with different **Root Directory
 |---|---|---|---|
 | protickt-api | `apps/api` | Framework: **Other**. `apps/api/vercel.json` provides the catch-all rewrite into the Express function and the order-expiry cron. | Everything from `apps/api/.env.example` — with `WEB_URL` + `CORS_ORIGINS` set to the deployed frontend URLs and a strong `CRON_SECRET` (Vercel Cron sends it as the bearer token automatically). |
 | protickt-web | `apps/web` | Framework: **Next.js** (auto-detected), defaults are fine. | `NEXT_PUBLIC_API_URL` = the api deployment URL. |
-| protickt-admin | `apps/admin` | Framework: **Angular**. Output directory: `dist/admin/browser`. `apps/admin/vercel.json` rewrites deep links to `index.html` (SPA routing). | None — production URLs/keys are baked in at build time from `src/environments/environment.production.ts` (swapped in by `fileReplacements`; `ng serve` still uses the local `environment.ts`). |
+| protickt-admin | `apps/admin` | Framework: **Angular**. `apps/admin/vercel.json` pins the output directory (`dist/admin/browser`) and rewrites deep links to `index.html` (SPA routing) — no manual dashboard settings needed. | None — production URLs/keys are baked in at build time from `src/environments/environment.production.ts` (swapped in by `fileReplacements`; `ng serve` still uses the local `environment.ts`). |
 
 Deploy order and the loose ends that follow:
 
