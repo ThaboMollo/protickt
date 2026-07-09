@@ -1,0 +1,14 @@
+<header class="topbar">
+  <a routerLink="/" class="logo">Pro<span>Tickt</span> <small>admin</small></a>
+  @if (supabase.session()) {
+    <nav>
+      <a routerLink="/events" routerLinkActive="active">Events</a>
+      <a routerLink="/scan" routerLinkActive="active">Scan</a>
+      <button class="link" (click)="signOut()">Sign out</button>
+    </nav>
+  }
+</header>
+
+<main class="container">
+  <router-outlet />
+</main>

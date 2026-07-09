@@ -1,0 +1,20 @@
+{
+  "name": "protickt",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Event ticketing platform: buy online, get a QR code, scan at the gate.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build:shared": "npm run build -w @protickt/shared",
+    "dev:api": "npm run dev -w @protickt/api",
+    "dev:web": "npm run dev -w web",
+    "dev:admin": "npm run start -w admin",
+    "build": "npm run build:shared && npm run build -w @protickt/api && npm run build -w web && npm run build -w admin"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,154 @@
+:root {
+  --ink: #14181f;
+  --muted: #5b6472;
+  --accent: #4f46e5;
+  --accent-dark: #4338ca;
+  --bg: #f7f8fa;
+  --card: #ffffff;
+  --border: #e3e6eb;
+  --ok: #16a34a;
+  --bad: #dc2626;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+.site-header {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 0.9rem 1.5rem;
+}
+
+.logo {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.logo span {
+  color: var(--accent);
+}
+
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+h1 {
+  font-size: 1.7rem;
+  margin: 0 0 0.5rem;
+}
+
+.meta {
+  color: var(--muted);
+  margin: 0.25rem 0;
+}
+
+.price {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 1rem 0;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin: 0.9rem 0 0.3rem;
+}
+
+input,
+select {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 1rem;
+  background: #fff;
+}
+
+input:focus {
+  outline: 2px solid var(--accent);
+  border-color: transparent;
+}
+
+button.primary {
+  width: 100%;
+  margin-top: 1.25rem;
+  padding: 0.8rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+button.primary:hover {
+  background: var(--accent-dark);
+}
+
+button.primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error {
+  color: var(--bad);
+  margin-top: 0.75rem;
+}
+
+.status-ok {
+  color: var(--ok);
+  font-weight: 700;
+}
+
+.status-bad {
+  color: var(--bad);
+  font-weight: 700;
+}
+
+.ticket-card {
+  text-align: center;
+}
+
+.ticket-card .qr {
+  display: inline-block;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin: 1rem 0;
+}
+
+.ticket-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.spinner {
+  color: var(--muted);
+  text-align: center;
+  padding: 2rem 0;
+}
