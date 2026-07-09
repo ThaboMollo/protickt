@@ -62,15 +62,23 @@ Flow to test end-to-end: sign in to the admin (`:4200`) → create an event → 
 
 ## Deploy (Vercel)
 
-Three Vercel projects, all pointing at this repo with different **Root Directory** settings. Enable *"Include files outside root directory"* on each so the workspace packages resolve.
+Three Vercel projects, all pointing at this repo with different **Root Directory** settings ("Include source files outside of the Root Directory" must stay enabled — it's the default). The shared package builds itself on install via its `prepare` script, so no custom install/build commands are needed anywhere.
 
-| Project | Root directory | Notes |
-|---|---|---|
-| api | `apps/api` | Env vars from `.env.example`; `vercel.json` handles rewrites + the order-expiry cron. Use Supabase's pooled connection if you ever add direct Postgres access. |
-| web | `apps/web` | Set `NEXT_PUBLIC_API_URL` to the api domain |
-| admin | `apps/admin` | Build command `ng build`, output `dist/admin/browser`. Point `environment.ts` at production URLs before building. |
+| Project | Root directory | Settings | Env vars |
+|---|---|---|---|
+| protickt-api | `apps/api` | Framework: **Other**. `apps/api/vercel.json` provides the catch-all rewrite into the Express function and the order-expiry cron. | Everything from `apps/api/.env.example` — with `WEB_URL` + `CORS_ORIGINS` set to the deployed frontend URLs and a strong `CRON_SECRET` (Vercel Cron sends it as the bearer token automatically). |
+| protickt-web | `apps/web` | Framework: **Next.js** (auto-detected), defaults are fine. | `NEXT_PUBLIC_API_URL` = the api deployment URL. |
+| protickt-admin | `apps/admin` | Framework: **Angular**. Output directory: `dist/admin/browser`. `apps/admin/vercel.json` rewrites deep links to `index.html` (SPA routing). | None — production URLs/keys are baked in at build time from `src/environments/environment.production.ts` (swapped in by `fileReplacements`; `ng serve` still uses the local `environment.ts`). |
 
-Set `WEB_URL` and `CORS_ORIGINS` on the api project to the deployed frontend domains, and switch `PAYSTACK_SECRET_KEY` to the live key when going live.
+Deploy order and the loose ends that follow:
+
+1. Deploy **protickt-api** first, note its URL.
+2. Put that URL in `environment.production.ts` (admin) and `NEXT_PUBLIC_API_URL` (web), deploy both frontends.
+3. Update the api project's `WEB_URL` / `CORS_ORIGINS` to the real frontend URLs and redeploy.
+4. Paystack dashboard → set the webhook URL to `https://<api-url>/webhooks/paystack` (replaces any local ngrok tunnel).
+5. Going live: swap `PAYSTACK_SECRET_KEY` for the live key.
+
+No Git remote is required to try it out — `vercel --cwd apps/api` (and siblings) deploys straight from the working tree. For CI-style deploys on push, connect the repo to the three projects in the Vercel dashboard.
 
 ## API surface
 
