@@ -14,7 +14,9 @@ export default async function EventPage({
   const event = await apiGet<EventWithAvailability>(`/events/${slug}`);
   if (!event) notFound();
 
-  const flyerIsImage = event.flyer_url !== null && !event.flyer_url.endsWith(".pdf");
+  // Truthy check (not `!== null`): an API that predates the flyer migration
+  // omits the field entirely, so flyer_url can also be undefined.
+  const flyerIsImage = !!event.flyer_url && !event.flyer_url.endsWith(".pdf");
 
   return (
     <>
