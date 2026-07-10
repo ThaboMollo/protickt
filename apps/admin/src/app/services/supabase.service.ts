@@ -1,10 +1,12 @@
 import { Injectable, signal } from '@angular/core';
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
+import { FLYER_BUCKET } from '@protickt/shared';
 import { environment } from '../../environments/environment';
 
 /**
- * Supabase is used in the admin app for auth only — all data goes through
- * the Express API, which verifies the JWT this service produces.
+ * Supabase is used in the admin app for auth, plus flyer uploads to storage
+ * (authorised by a signed upload token minted by the API) — all data goes
+ * through the Express API, which verifies the JWT this service produces.
  */
 @Injectable({ providedIn: 'root' })
 export class SupabaseService {
@@ -38,5 +40,13 @@ export class SupabaseService {
   async accessToken(): Promise<string | null> {
     const { data } = await this.client.auth.getSession();
     return data.session?.access_token ?? null;
+  }
+
+  /** Upload a flyer to storage using a signed token from the API. */
+  async uploadFlyer(path: string, token: string, file: File): Promise<string | null> {
+    const { error } = await this.client.storage
+      .from(FLYER_BUCKET)
+      .uploadToSignedUrl(path, token, file);
+    return error ? error.message : null;
   }
 }

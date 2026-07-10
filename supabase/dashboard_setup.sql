@@ -30,6 +30,7 @@ create table events (
   capacity    integer check (capacity > 0),
   status      text not null default 'draft'
               check (status in ('draft', 'published', 'closed')),
+  flyer_url   text,
   created_by  uuid references auth.users (id),
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
@@ -138,6 +139,20 @@ alter table events      enable row level security;
 alter table orders      enable row level security;
 alter table tickets     enable row level security;
 alter table scans       enable row level security;
+
+-- ---------------------------------------------------------------------------
+-- Event flyers bucket: public read; writes only via signed upload URLs
+-- minted by the API, so no storage RLS policies are needed.
+-- ---------------------------------------------------------------------------
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'event-flyers',
+  'event-flyers',
+  true,
+  10485760, -- 10 MB
+  array['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+)
+on conflict (id) do nothing;
 
 -- ---------------------------------------------------------------------------
 -- Make your dashboard-created user an admin.

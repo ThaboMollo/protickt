@@ -1,8 +1,15 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import type { EventInput } from '@protickt/shared';
+import {
+  FLYER_CONTENT_TYPES,
+  SUPPORTED_CURRENCIES,
+  type Currency,
+  type EventInput,
+  type FlyerContentType,
+} from '@protickt/shared';
 import { ApiService } from '../../services/api.service';
+import { SupabaseService } from '../../services/supabase.service';
 
 @Component({
   selector: 'app-event-form',
@@ -27,8 +34,30 @@ import { ApiService } from '../../services/api.service';
         <label for="starts_at">Starts at</label>
         <input id="starts_at" name="starts_at" type="datetime-local" [(ngModel)]="startsAt" required />
 
-        <label for="price">Ticket price (R, 0 = free)</label>
+        <label for="currency">Currency</label>
+        <select id="currency" name="currency" [(ngModel)]="currency">
+          @for (code of currencies; track code) {
+            <option [value]="code">{{ code }}</option>
+          }
+        </select>
+
+        <label for="price">Ticket price ({{ currency }}, 0 = free)</label>
         <input id="price" name="price" type="number" min="0" step="0.01" [(ngModel)]="priceRands" required />
+
+        <label for="flyer">Flyer (image or PDF, downloadable on the event page)</label>
+        @if (flyerUrl && !flyerFile) {
+          <p class="meta">
+            <a [href]="flyerUrl" target="_blank">Current flyer ↗</a>
+            <button type="button" class="secondary" (click)="removeFlyer()">Remove</button>
+          </p>
+        }
+        <input
+          id="flyer"
+          name="flyer"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,application/pdf"
+          (change)="onFlyerChange($event)"
+        />
 
         <label for="capacity">Capacity (blank = unlimited)</label>
         <input id="capacity" name="capacity" type="number" min="1" [(ngModel)]="capacity" />
@@ -53,10 +82,13 @@ import { ApiService } from '../../services/api.service';
 })
 export class EventFormPage {
   private readonly api = inject(ApiService);
+  private readonly supabase = inject(SupabaseService);
   private readonly router = inject(Router);
 
   protected readonly eventId: string | null =
     inject(ActivatedRoute).snapshot.paramMap.get('id');
+
+  protected readonly currencies = SUPPORTED_CURRENCIES;
 
   protected name = '';
   protected slug = '';
@@ -64,8 +96,11 @@ export class EventFormPage {
   protected venue = '';
   protected startsAt = '';
   protected priceRands: number | null = null;
+  protected currency: Currency = 'ZAR';
   protected capacity: number | null = null;
   protected status: 'draft' | 'published' | 'closed' = 'draft';
+  protected flyerUrl: string | null = null;
+  protected flyerFile: File | null = null;
 
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -81,8 +116,10 @@ export class EventFormPage {
         this.venue = event.venue ?? '';
         this.startsAt = toDatetimeLocal(event.starts_at);
         this.priceRands = event.price_cents / 100;
+        this.currency = event.currency as Currency;
         this.capacity = event.capacity;
         this.status = event.status;
+        this.flyerUrl = event.flyer_url;
       });
     }
   }
@@ -93,6 +130,23 @@ export class EventFormPage {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
+  }
+
+  protected onFlyerChange(event: Event): void {
+    const inputEl = event.target as HTMLInputElement;
+    const file = inputEl.files?.[0] ?? null;
+    if (file && !FLYER_CONTENT_TYPES.includes(file.type as FlyerContentType)) {
+      this.error.set('Flyer must be a JPEG, PNG, WebP or PDF file');
+      inputEl.value = '';
+      this.flyerFile = null;
+      return;
+    }
+    this.error.set(null);
+    this.flyerFile = file;
+  }
+
+  protected removeFlyer(): void {
+    this.flyerUrl = null;
   }
 
   protected async submit(): Promise<void> {
@@ -106,20 +160,39 @@ export class EventFormPage {
       venue: this.venue || null,
       starts_at: new Date(this.startsAt).toISOString(),
       price_cents: Math.round((this.priceRands ?? 0) * 100),
-      currency: 'ZAR',
+      currency: this.currency,
       capacity: this.capacity || null,
       status: this.status,
+      flyer_url: this.flyerUrl,
     };
 
     try {
       const saved = this.eventId
         ? await this.api.updateEvent(this.eventId, input)
         : await this.api.createEvent(input);
+
+      if (this.flyerFile) {
+        await this.uploadFlyer(saved.id, this.flyerFile);
+      }
+
       this.router.navigate(['/events', saved.id]);
     } catch (err) {
       this.error.set(err instanceof Error ? err.message : 'Failed to save event');
       this.busy.set(false);
     }
+  }
+
+  /** Upload the flyer straight to storage, then attach its URL to the event. */
+  private async uploadFlyer(eventId: string, file: File): Promise<void> {
+    const { path, token, public_url } = await this.api.createFlyerUploadUrl(
+      eventId,
+      file.type as FlyerContentType,
+    );
+    const uploadError = await this.supabase.uploadFlyer(path, token, file);
+    if (uploadError) {
+      throw new Error(`Event saved, but the flyer upload failed: ${uploadError}`);
+    }
+    await this.api.updateEvent(eventId, { flyer_url: public_url });
   }
 }
 

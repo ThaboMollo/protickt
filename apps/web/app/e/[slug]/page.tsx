@@ -14,15 +14,31 @@ export default async function EventPage({
   const event = await apiGet<EventWithAvailability>(`/events/${slug}`);
   if (!event) notFound();
 
+  const flyerIsImage = event.flyer_url !== null && !event.flyer_url.endsWith(".pdf");
+
   return (
     <>
       <div className="card">
+        {event.flyer_url && flyerIsImage && (
+          // eslint-disable-next-line @next/next/no-img-element -- flyer lives on Supabase storage, dimensions unknown
+          <img
+            src={event.flyer_url}
+            alt={`${event.name} flyer`}
+            style={{ width: "100%", borderRadius: "8px", marginBottom: "1rem" }}
+          />
+        )}
         <h1>{event.name}</h1>
         <p className="meta">
           📅 {new Date(event.starts_at).toLocaleString("en-ZA", { dateStyle: "full", timeStyle: "short" })}
         </p>
         {event.venue && <p className="meta">📍 {event.venue}</p>}
         {event.description && <p>{event.description}</p>}
+        {event.flyer_url && (
+          <p>
+            {/* ?download makes Supabase storage serve the file as an attachment */}
+            <a href={`${event.flyer_url}?download`}>⬇ Download flyer</a>
+          </p>
+        )}
         <p className="price">
           {event.price_cents === 0
             ? "Free"

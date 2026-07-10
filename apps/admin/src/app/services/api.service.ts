@@ -5,6 +5,8 @@ import type {
   EventRecord,
   EventStats,
   EventUpdate,
+  FlyerContentType,
+  FlyerUploadUrlResponse,
   OrderRecord,
 } from '@protickt/shared';
 import { environment } from '../../environments/environment';
@@ -54,6 +56,15 @@ export class ApiService {
 
   updateEvent(id: string, input: EventUpdate): Promise<EventRecord> {
     return this.request('PATCH', `/admin/events/${id}`, input);
+  }
+
+  createFlyerUploadUrl(
+    eventId: string,
+    contentType: FlyerContentType,
+  ): Promise<FlyerUploadUrlResponse> {
+    return this.request('POST', `/admin/events/${eventId}/flyer-upload-url`, {
+      content_type: contentType,
+    });
   }
 
   getStats(id: string): Promise<EventStats> {

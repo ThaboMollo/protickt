@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import type { EventRecord, EventStats, OrderRecord } from '@protickt/shared';
+import type { EventRecord, EventStats, EventStatus, OrderRecord } from '@protickt/shared';
 import { formatMoney } from '@protickt/shared';
 import { ApiService } from '../../services/api.service';
 import { environment } from '../../../environments/environment';
@@ -24,6 +24,28 @@ import { environment } from '../../../environments/environment';
         <p class="meta">
           🎟️ {{ price(ev) }} · capacity {{ ev.capacity ?? 'unlimited' }} ·
           <span class="badge {{ ev.status }}">{{ ev.status }}</span>
+        </p>
+        @if (ev.flyer_url) {
+          <p class="meta">🖼️ <a [href]="ev.flyer_url" target="_blank">View flyer</a></p>
+        }
+
+        <p>
+          @if (ev.status === 'draft') {
+            <button class="primary" [disabled]="statusBusy()" (click)="setStatus('published')">
+              Publish
+            </button>
+          } @else if (ev.status === 'published') {
+            <button class="secondary" [disabled]="statusBusy()" (click)="setStatus('draft')">
+              Unpublish (back to draft)
+            </button>
+            <button class="secondary" [disabled]="statusBusy()" (click)="setStatus('closed')">
+              Close sales
+            </button>
+          } @else {
+            <button class="primary" [disabled]="statusBusy()" (click)="setStatus('published')">
+              Reopen sales
+            </button>
+          }
         </p>
 
         @if (ev.status === 'published') {
@@ -119,6 +141,7 @@ export class EventDetailPage {
   protected readonly orders = signal<OrderRecord[]>([]);
   protected readonly error = signal<string | null>(null);
   protected readonly copied = signal(false);
+  protected readonly statusBusy = signal(false);
 
   constructor() {
     const id = inject(ActivatedRoute).snapshot.paramMap.get('id')!;
@@ -128,6 +151,19 @@ export class EventDetailPage {
       .catch((err: Error) => this.error.set(err.message));
     this.api.getStats(id).then((stats) => this.stats.set(stats)).catch(() => {});
     this.api.getOrders(id).then((orders) => this.orders.set(orders)).catch(() => {});
+  }
+
+  protected async setStatus(status: EventStatus): Promise<void> {
+    const current = this.event();
+    if (!current) return;
+    this.statusBusy.set(true);
+    try {
+      this.event.set(await this.api.updateEvent(current.id, { status }));
+    } catch (err) {
+      this.error.set(err instanceof Error ? err.message : 'Failed to update status');
+    } finally {
+      this.statusBusy.set(false);
+    }
   }
 
   protected shareLink(event: EventRecord): string {

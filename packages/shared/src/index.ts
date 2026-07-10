@@ -8,6 +8,31 @@ import { z } from "zod";
 export const PENDING_ORDER_TTL_MINUTES = 20;
 
 export const EVENT_STATUSES = ["draft", "published", "closed"] as const;
+
+/**
+ * Currencies offered in the admin UI. Paystack only settles a subset per
+ * merchant country — charging a currency not enabled on the Paystack account
+ * fails at checkout, so keep this list to currencies the account supports.
+ */
+export const SUPPORTED_CURRENCIES = ["ZAR", "USD", "NGN", "GHS", "KES"] as const;
+
+/** Storage bucket that event flyers are uploaded to (public read). */
+export const FLYER_BUCKET = "event-flyers";
+
+export const FLYER_CONTENT_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+] as const;
+
+export const FLYER_EXTENSIONS: Record<FlyerContentType, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "application/pdf": "pdf",
+};
+
 export const ORDER_STATUSES = [
   "pending",
   "paid",
@@ -25,6 +50,8 @@ export const SCAN_RESULTS = [
 ] as const;
 
 export type EventStatus = (typeof EVENT_STATUSES)[number];
+export type Currency = (typeof SUPPORTED_CURRENCIES)[number];
+export type FlyerContentType = (typeof FLYER_CONTENT_TYPES)[number];
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 export type TicketStatus = (typeof TICKET_STATUSES)[number];
 export type ScanResult = (typeof SCAN_RESULTS)[number];
@@ -44,6 +71,7 @@ export interface EventRecord {
   currency: string;
   capacity: number | null;
   status: EventStatus;
+  flyer_url: string | null;
   created_at: string;
 }
 
@@ -128,9 +156,10 @@ export const eventInputSchema = z.object({
   venue: z.string().max(300).nullish(),
   starts_at: z.string().datetime({ offset: true }),
   price_cents: z.number().int().min(0),
-  currency: z.string().length(3).default("ZAR"),
+  currency: z.enum(SUPPORTED_CURRENCIES).default("ZAR"),
   capacity: z.number().int().positive().nullish(),
   status: z.enum(EVENT_STATUSES).default("draft"),
+  flyer_url: z.string().url().max(1000).nullish(),
 });
 export type EventInput = z.infer<typeof eventInputSchema>;
 
@@ -145,6 +174,20 @@ export const checkoutInputSchema = z.object({
   quantity: z.number().int().min(1).max(10),
 });
 export type CheckoutInput = z.infer<typeof checkoutInputSchema>;
+
+export const flyerUploadInputSchema = z.object({
+  content_type: z.enum(FLYER_CONTENT_TYPES),
+});
+export type FlyerUploadInput = z.infer<typeof flyerUploadInputSchema>;
+
+/** Response of POST /admin/events/:id/flyer-upload-url. The admin app uploads
+ *  the file straight to storage with the token, then PATCHes the event with
+ *  public_url — flyer bytes never pass through the API. */
+export interface FlyerUploadUrlResponse {
+  path: string;
+  token: string;
+  public_url: string;
+}
 
 export const checkinInputSchema = z.object({
   /** Raw scan payload: either a bare ticket code or a ticket URL containing it. */

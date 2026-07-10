@@ -4,8 +4,12 @@ import {
   eventInputSchema,
   eventUpdateSchema,
   extractTicketCode,
+  FLYER_BUCKET,
+  FLYER_EXTENSIONS,
+  flyerUploadInputSchema,
   type CheckinResponse,
   type EventStats,
+  type FlyerUploadUrlResponse,
   type ScanResult,
 } from "@protickt/shared";
 import { supabase } from "../lib/supabase.js";
@@ -90,6 +94,40 @@ adminRouter.patch("/events/:id", async (req, res) => {
     return;
   }
   res.json(data);
+});
+
+// POST /admin/events/:id/flyer-upload-url — mint a signed storage upload URL.
+// The admin app uploads the flyer straight to the bucket with the returned
+// token, then PATCHes the event with public_url. Timestamped paths mean a
+// replacement never fights CDN caching of the old file.
+adminRouter.post("/events/:id/flyer-upload-url", async (req, res) => {
+  const parsed = flyerUploadInputSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", details: parsed.error.flatten() });
+    return;
+  }
+
+  const { data: event } = await supabase()
+    .from("events")
+    .select("id")
+    .eq("id", req.params.id)
+    .maybeSingle();
+  if (!event) {
+    res.status(404).json({ error: "Event not found" });
+    return;
+  }
+
+  const path = `${event.id}/${Date.now()}.${FLYER_EXTENSIONS[parsed.data.content_type]}`;
+  const bucket = supabase().storage.from(FLYER_BUCKET);
+
+  const { data, error } = await bucket.createSignedUploadUrl(path);
+  if (error) throw error;
+
+  res.json({
+    path,
+    token: data.token,
+    public_url: bucket.getPublicUrl(path).data.publicUrl,
+  } satisfies FlyerUploadUrlResponse);
 });
 
 // GET /admin/events/:id/stats
