@@ -66,6 +66,8 @@ export function CheckoutForm({ slug }: { slug: string }) {
       <button className="primary" type="submit" disabled={submitting}>
         {submitting ? "Redirecting to payment…" : "Pay & get tickets"}
       </button>
+
+      <p className="secure-note">🔒 Secure payment via Paystack</p>
     </form>
   );
 }

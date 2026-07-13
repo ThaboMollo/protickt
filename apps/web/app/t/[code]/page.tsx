@@ -17,10 +17,14 @@ export default async function TicketPage({
   return (
     <div className="card ticket-card">
       <h1>{ticket.event.name}</h1>
-      <p className="meta">
-        📅 {new Date(ticket.event.starts_at).toLocaleString("en-ZA", { dateStyle: "full", timeStyle: "short" })}
-      </p>
-      {ticket.event.venue && <p className="meta">📍 {ticket.event.venue}</p>}
+      <div className="pills">
+        <span className="pill">
+          📅 {new Date(ticket.event.starts_at).toLocaleString("en-ZA", { dateStyle: "full", timeStyle: "short" })}
+        </span>
+        {ticket.event.venue && (
+          <span className="pill">📍 {ticket.event.venue}</span>
+        )}
+      </div>
       <p className="meta">Ticket holder: {ticket.buyer_name}</p>
 
       {ticket.status === "valid" && (

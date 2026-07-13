@@ -1,8 +1,12 @@
 export default function Home() {
   return (
-    <div className="card">
-      <h1>ProTickt</h1>
-      <p className="meta">
+    <div className="home-hero">
+      <h1>
+        Your ticket. One QR.
+        <br />
+        <span className="gradient-text">Walk straight in.</span>
+      </h1>
+      <p className="lead">
         Buy your ticket online, get a QR code, walk straight in at the gate.
       </p>
       <p className="meta">
