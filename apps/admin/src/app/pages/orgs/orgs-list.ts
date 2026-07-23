@@ -18,7 +18,9 @@ import { ApiService } from '../../services/api.service';
 
     <div class="card">
       @if (loading()) {
-        <p class="meta">Loading…</p>
+        @for (i of [1, 2, 3]; track i) {
+          <div class="skeleton skeleton-line"></div>
+        }
       } @else {
         <table>
           <thead>

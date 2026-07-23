@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, NgForm } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   FLYER_CONTENT_TYPES,
@@ -20,7 +20,13 @@ import { MeService } from '../../services/me.service';
     <h1>{{ eventId ? 'Edit event' : 'New event' }}</h1>
 
     <div class="card">
-      <form (ngSubmit)="submit()">
+      @if (loading()) {
+        @for (i of skeletonFields; track $index) {
+          <div class="skeleton skeleton-label"></div>
+          <div class="skeleton skeleton-input"></div>
+        }
+      } @else {
+      <form #f="ngForm" (ngSubmit)="submit(f)">
         @if (!eventId && orgs().length > 0) {
           <label for="organization">Organization (whose site sells this event)</label>
           <select id="organization" name="organization" [(ngModel)]="organizationId">
@@ -30,11 +36,14 @@ import { MeService } from '../../services/me.service';
           </select>
         }
 
-        <label for="name">Event name</label>
+        <label for="name" class="required">Event name</label>
         <input id="name" name="name" [(ngModel)]="name" required (input)="suggestSlug()" />
 
-        <label for="slug">Link slug (protickt.app/e/…)</label>
-        <input id="slug" name="slug" [(ngModel)]="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" />
+        <label for="slug" class="required">Link slug (protickt.app/e/…)</label>
+        <input id="slug" name="slug" [(ngModel)]="slug" #slugCtl="ngModel" required pattern="[a-z0-9]+(-[a-z0-9]+)*" />
+        @if (slugCtl.errors?.['pattern'] && slugCtl.touched) {
+          <p class="field-error">Lowercase letters, numbers and dashes only (e.g. my-event)</p>
+        }
 
         <label for="description">Description</label>
         <textarea id="description" name="description" rows="4" [(ngModel)]="description"></textarea>
@@ -42,7 +51,7 @@ import { MeService } from '../../services/me.service';
         <label for="venue">Venue</label>
         <input id="venue" name="venue" [(ngModel)]="venue" />
 
-        <label for="starts_at">Starts at</label>
+        <label for="starts_at" class="required">Starts at</label>
         <input id="starts_at" name="starts_at" type="datetime-local" [(ngModel)]="startsAt" required />
 
         <label for="currency">Currency</label>
@@ -52,7 +61,7 @@ import { MeService } from '../../services/me.service';
           }
         </select>
 
-        <label for="price">Ticket price ({{ currency }}, 0 = free)</label>
+        <label for="price" class="required">Ticket price ({{ currency }}, 0 = free)</label>
         <input id="price" name="price" type="number" min="0" step="0.01" [(ngModel)]="priceRands" required />
 
         <label for="flyer">Flyer (image or PDF, downloadable on the event page)</label>
@@ -88,6 +97,7 @@ import { MeService } from '../../services/me.service';
           {{ busy() ? 'Saving…' : eventId ? 'Save changes' : 'Create event' }}
         </button>
       </form>
+      }
     </div>
   `,
 })
@@ -121,6 +131,11 @@ export class EventFormPage {
 
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
+  /** Editing: the form is hidden behind a skeleton until the event arrives.
+   *  The signal flip also schedules change detection, so the inputs render
+   *  already populated (zoneless CD won't re-render on a bare promise). */
+  protected readonly loading = signal(false);
+  protected readonly skeletonFields = Array.from({ length: 7 });
   private slugTouched = false;
 
   constructor() {
@@ -135,18 +150,23 @@ export class EventFormPage {
     }
     if (this.eventId) {
       this.slugTouched = true;
-      this.api.getEvent(this.eventId).then((event) => {
-        this.name = event.name;
-        this.slug = event.slug;
-        this.description = event.description ?? '';
-        this.venue = event.venue ?? '';
-        this.startsAt = toDatetimeLocal(event.starts_at);
-        this.priceRands = event.price_cents / 100;
-        this.currency = event.currency as Currency;
-        this.capacity = event.capacity;
-        this.status = event.status;
-        this.flyerUrl = event.flyer_url;
-      });
+      this.loading.set(true);
+      this.api
+        .getEvent(this.eventId)
+        .then((event) => {
+          this.name = event.name;
+          this.slug = event.slug;
+          this.description = event.description ?? '';
+          this.venue = event.venue ?? '';
+          this.startsAt = toDatetimeLocal(event.starts_at);
+          this.priceRands = event.price_cents / 100;
+          this.currency = event.currency as Currency;
+          this.capacity = event.capacity;
+          this.status = event.status;
+          this.flyerUrl = event.flyer_url;
+        })
+        .catch((err: Error) => this.error.set(err.message))
+        .finally(() => this.loading.set(false));
     }
   }
 
@@ -175,7 +195,12 @@ export class EventFormPage {
     this.flyerUrl = null;
   }
 
-  protected async submit(): Promise<void> {
+  protected async submit(form: NgForm): Promise<void> {
+    if (form.invalid) {
+      form.form.markAllAsTouched();
+      this.error.set('Please fill in the required fields highlighted above.');
+      return;
+    }
     this.busy.set(true);
     this.error.set(null);
 

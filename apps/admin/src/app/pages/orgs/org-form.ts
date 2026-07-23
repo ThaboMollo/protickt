@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, NgForm } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   DEFAULT_THEME,
@@ -35,15 +35,27 @@ const THEME_LABELS: Record<keyof Required<TenantTheme>, string> = {
     <h1>{{ orgId ? 'Edit organization' : 'New organization' }}</h1>
 
     <div class="card">
-      <form (ngSubmit)="submit()">
-        <label for="name">Organization name (shown on their site and emails)</label>
+      @if (loading()) {
+        @for (i of skeletonFields; track $index) {
+          <div class="skeleton skeleton-label"></div>
+          <div class="skeleton skeleton-input"></div>
+        }
+      } @else {
+      <form #f="ngForm" (ngSubmit)="submit(f)">
+        <label for="name" class="required">Organization name (shown on their site and emails)</label>
         <input id="name" name="name" [(ngModel)]="name" required (input)="suggestSlug()" />
 
-        <label for="slug">Tenant slug (used in webhook URL and site config)</label>
-        <input id="slug" name="slug" [(ngModel)]="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" />
+        <label for="slug" class="required">Tenant slug (used in webhook URL and site config)</label>
+        <input id="slug" name="slug" [(ngModel)]="slug" #slugCtl="ngModel" required pattern="[a-z0-9]+(-[a-z0-9]+)*" />
+        @if (slugCtl.errors?.['pattern'] && slugCtl.touched) {
+          <p class="field-error">Lowercase letters, numbers and dashes only (e.g. wild-media)</p>
+        }
 
-        <label for="site_url">Buyer site URL (their domain, no trailing slash)</label>
-        <input id="site_url" name="site_url" type="url" [(ngModel)]="siteUrl" required placeholder="https://tickets.example.com" />
+        <label for="site_url" class="required">Buyer site URL (their domain, no trailing slash)</label>
+        <input id="site_url" name="site_url" type="url" [(ngModel)]="siteUrl" #siteUrlCtl="ngModel" required pattern="https?://.+" placeholder="https://tickets.example.com" />
+        @if (siteUrlCtl.errors?.['pattern'] && siteUrlCtl.touched) {
+          <p class="field-error">Must be a full URL starting with https://</p>
+        }
 
         <label for="logo">Logo (shown in the site header; SVG, PNG, JPEG or WebP)</label>
         @if (logoUrl && !logoFile) {
@@ -55,7 +67,10 @@ const THEME_LABELS: Record<keyof Required<TenantTheme>, string> = {
         <input id="logo" name="logo" type="file" accept="image/jpeg,image/png,image/webp,image/svg+xml" (change)="onLogoChange($event)" />
 
         <label for="support_email">Support email (buyers reply here)</label>
-        <input id="support_email" name="support_email" type="email" [(ngModel)]="supportEmail" />
+        <input id="support_email" name="support_email" type="email" [(ngModel)]="supportEmail" #supportEmailCtl="ngModel" email />
+        @if (supportEmailCtl.errors?.['email'] && supportEmailCtl.touched) {
+          <p class="field-error">Enter a valid email address</p>
+        }
 
         <label for="support_phone">Support phone</label>
         <input id="support_phone" name="support_phone" type="tel" [(ngModel)]="supportPhone" />
@@ -100,6 +115,7 @@ const THEME_LABELS: Record<keyof Required<TenantTheme>, string> = {
           {{ busy() ? 'Saving…' : orgId ? 'Save changes' : 'Create organization' }}
         </button>
       </form>
+      }
     </div>
 
     @if (orgId) {
@@ -115,18 +131,24 @@ const THEME_LABELS: Record<keyof Required<TenantTheme>, string> = {
             <span class="badge draft">no keys yet</span>
           }
         </p>
-        <form (ngSubmit)="saveKeys()">
-          <label for="secret_key">Secret key (sk_…)</label>
-          <input id="secret_key" name="secret_key" type="password" [(ngModel)]="secretKey" autocomplete="off" />
-          <label for="public_key">Public key (pk_…)</label>
-          <input id="public_key" name="public_key" type="password" [(ngModel)]="publicKey" autocomplete="off" />
+        <form #kf="ngForm" (ngSubmit)="saveKeys(kf)">
+          <label for="secret_key" class="required">Secret key (sk_…)</label>
+          <input id="secret_key" name="secret_key" type="password" [(ngModel)]="secretKey" #secretCtl="ngModel" required pattern="sk_.+" autocomplete="off" />
+          @if (secretCtl.errors?.['pattern'] && secretCtl.touched) {
+            <p class="field-error">Secret keys start with sk_</p>
+          }
+          <label for="public_key" class="required">Public key (pk_…)</label>
+          <input id="public_key" name="public_key" type="password" [(ngModel)]="publicKey" #publicCtl="ngModel" required pattern="pk_.+" autocomplete="off" />
+          @if (publicCtl.errors?.['pattern'] && publicCtl.touched) {
+            <p class="field-error">Public keys start with pk_</p>
+          }
           @if (keysError()) {
             <p class="error">{{ keysError() }}</p>
           }
           @if (keysSaved()) {
             <p class="meta">✓ Keys saved. Remind the client to set their Paystack webhook URL to <code>{{ webhookUrl }}</code></p>
           }
-          <button class="primary" type="submit" [disabled]="keysBusy() || !secretKey || !publicKey">
+          <button class="primary" type="submit" [disabled]="keysBusy()">
             {{ keysBusy() ? 'Saving…' : 'Save keys' }}
           </button>
         </form>
@@ -150,13 +172,16 @@ const THEME_LABELS: Record<keyof Required<TenantTheme>, string> = {
             </tbody>
           </table>
         }
-        <form (ngSubmit)="addAdmin()">
-          <label for="admin_email">Add admin by email</label>
-          <input id="admin_email" name="admin_email" type="email" [(ngModel)]="adminEmail" />
+        <form #af="ngForm" (ngSubmit)="addAdmin(af)">
+          <label for="admin_email" class="required">Add admin by email</label>
+          <input id="admin_email" name="admin_email" type="email" [(ngModel)]="adminEmail" #adminEmailCtl="ngModel" required email />
+          @if (adminEmailCtl.errors?.['email'] && adminEmailCtl.touched) {
+            <p class="field-error">Enter a valid email address</p>
+          }
           @if (adminError()) {
             <p class="error">{{ adminError() }}</p>
           }
-          <button class="primary" type="submit" [disabled]="adminBusy() || !adminEmail">
+          <button class="primary" type="submit" [disabled]="adminBusy()">
             {{ adminBusy() ? 'Adding…' : 'Add admin' }}
           </button>
         </form>
@@ -217,6 +242,10 @@ export class OrgFormPage {
 
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
+  /** Editing: skeleton until the org arrives; the signal flip re-renders the
+   *  form with populated inputs (zoneless CD ignores bare promise writes). */
+  protected readonly loading = signal(false);
+  protected readonly skeletonFields = Array.from({ length: 8 });
   protected readonly hasPaystackKeys = signal(false);
   protected readonly keysBusy = signal(false);
   protected readonly keysError = signal<string | null>(null);
@@ -232,21 +261,29 @@ export class OrgFormPage {
   constructor() {
     if (this.orgId) {
       this.slugTouched = true;
-      this.api.listOrgs().then((orgs) => {
-        const org = orgs.find((o) => o.id === this.orgId);
-        if (!org) return;
-        this.name = org.name;
-        this.slug = org.slug;
-        this.siteUrl = org.site_url;
-        this.logoUrl = org.logo_url;
-        this.supportEmail = org.support_email ?? '';
-        this.supportPhone = org.support_phone ?? '';
-        this.defaultCurrency = org.default_currency as Currency;
-        this.status = org.status;
-        this.theme = { ...DEFAULT_THEME, ...org.theme };
-        this.socials = { ...org.socials };
-        this.hasPaystackKeys.set(org.has_paystack_keys);
-      });
+      this.loading.set(true);
+      this.api
+        .listOrgs()
+        .then((orgs) => {
+          const org = orgs.find((o) => o.id === this.orgId);
+          if (!org) {
+            this.error.set('Organization not found');
+            return;
+          }
+          this.name = org.name;
+          this.slug = org.slug;
+          this.siteUrl = org.site_url;
+          this.logoUrl = org.logo_url;
+          this.supportEmail = org.support_email ?? '';
+          this.supportPhone = org.support_phone ?? '';
+          this.defaultCurrency = org.default_currency as Currency;
+          this.status = org.status;
+          this.theme = { ...DEFAULT_THEME, ...org.theme };
+          this.socials = { ...org.socials };
+          this.hasPaystackKeys.set(org.has_paystack_keys);
+        })
+        .catch((err: Error) => this.error.set(err.message))
+        .finally(() => this.loading.set(false));
       this.api.listOrgAdmins(this.orgId).then((admins) => this.admins.set(admins));
     }
   }
@@ -276,7 +313,12 @@ export class OrgFormPage {
     this.logoFile = file;
   }
 
-  protected async submit(): Promise<void> {
+  protected async submit(form: NgForm): Promise<void> {
+    if (form.invalid) {
+      form.form.markAllAsTouched();
+      this.error.set('Please fill in the required fields highlighted above.');
+      return;
+    }
     this.busy.set(true);
     this.error.set(null);
 
@@ -329,8 +371,13 @@ export class OrgFormPage {
     await this.api.updateOrg(orgId, { logo_url: public_url });
   }
 
-  protected async saveKeys(): Promise<void> {
+  protected async saveKeys(form: NgForm): Promise<void> {
     if (!this.orgId) return;
+    if (form.invalid) {
+      form.form.markAllAsTouched();
+      this.keysError.set('Both Paystack keys are required.');
+      return;
+    }
     this.keysBusy.set(true);
     this.keysError.set(null);
     this.keysSaved.set(false);
@@ -350,8 +397,13 @@ export class OrgFormPage {
     }
   }
 
-  protected async addAdmin(): Promise<void> {
+  protected async addAdmin(form: NgForm): Promise<void> {
     if (!this.orgId) return;
+    if (form.invalid) {
+      form.form.markAllAsTouched();
+      this.adminError.set('An email address is required.');
+      return;
+    }
     this.adminBusy.set(true);
     this.adminError.set(null);
     try {

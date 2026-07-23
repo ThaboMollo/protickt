@@ -53,6 +53,11 @@ label {
   margin: 0.9rem 0 0.3rem;
 }
 
+label.required::after {
+  content: ' *';
+  color: var(--bad);
+}
+
 input,
 select,
 textarea {
@@ -70,6 +75,28 @@ select:focus,
 textarea:focus {
   outline: 2px solid var(--accent);
   border-color: transparent;
+}
+
+/* Angular sets ng-invalid/ng-touched on ngModel controls; the submit guard
+   marks every control touched, so missing required fields light up both on
+   blur and on a failed submit. */
+input.ng-invalid.ng-touched,
+select.ng-invalid.ng-touched,
+textarea.ng-invalid.ng-touched {
+  border-color: var(--bad);
+  background: #fff7f7;
+}
+
+input.ng-invalid.ng-touched:focus,
+select.ng-invalid.ng-touched:focus,
+textarea.ng-invalid.ng-touched:focus {
+  outline-color: var(--bad);
+}
+
+.field-error {
+  color: var(--bad);
+  font-size: 0.82rem;
+  margin: 0.25rem 0 0;
 }
 
 button.primary {
@@ -174,4 +201,49 @@ th {
 .badge.checked_in {
   background: #fdf3e3;
   color: var(--warn);
+}
+
+/* Loading skeletons: shimmer placeholders shown while data is fetched so
+   half-loaded screens never look broken. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #e9ecf1;
+  border-radius: 8px;
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  animation: skeleton-shimmer 1.4s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-label {
+  height: 0.8rem;
+  width: 35%;
+  margin: 1.1rem 0 0.4rem;
+}
+
+.skeleton-input {
+  height: 2.55rem;
+}
+
+.skeleton-line {
+  height: 1rem;
+  margin: 0.85rem 0;
+}
+
+.skeleton-title {
+  height: 1.6rem;
+  width: 45%;
+  margin: 0 0 1rem;
 }

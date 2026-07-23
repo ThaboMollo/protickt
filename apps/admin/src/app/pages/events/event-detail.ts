@@ -92,7 +92,11 @@ import { environment } from '../../../environments/environment';
 
       <div class="card">
         <h2 style="margin-top: 0">Orders</h2>
-        @if (orders().length === 0) {
+        @if (ordersLoading()) {
+          @for (i of [1, 2]; track i) {
+            <div class="skeleton skeleton-line"></div>
+          }
+        } @else if (orders().length === 0) {
           <p class="meta">No orders yet.</p>
         } @else {
           <table>
@@ -129,7 +133,17 @@ import { environment } from '../../../environments/environment';
     } @else if (error()) {
       <p class="error">{{ error() }}</p>
     } @else {
-      <p class="meta">Loading…</p>
+      <div class="skeleton skeleton-title"></div>
+      <div class="card">
+        @for (i of [1, 2, 3]; track i) {
+          <div class="skeleton skeleton-line"></div>
+        }
+      </div>
+      <div class="card">
+        @for (i of [1, 2, 3, 4]; track i) {
+          <div class="skeleton skeleton-line"></div>
+        }
+      </div>
     }
   `,
 })
@@ -139,6 +153,7 @@ export class EventDetailPage {
   protected readonly event = signal<EventRecord | null>(null);
   protected readonly stats = signal<EventStats | null>(null);
   protected readonly orders = signal<OrderRecord[]>([]);
+  protected readonly ordersLoading = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly copied = signal(false);
   protected readonly statusBusy = signal(false);
@@ -150,7 +165,11 @@ export class EventDetailPage {
       .then((event) => this.event.set(event))
       .catch((err: Error) => this.error.set(err.message));
     this.api.getStats(id).then((stats) => this.stats.set(stats)).catch(() => {});
-    this.api.getOrders(id).then((orders) => this.orders.set(orders)).catch(() => {});
+    this.api
+      .getOrders(id)
+      .then((orders) => this.orders.set(orders))
+      .catch(() => {})
+      .finally(() => this.ordersLoading.set(false));
   }
 
   protected async setStatus(status: EventStatus): Promise<void> {

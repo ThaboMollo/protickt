@@ -339,3 +339,30 @@ a {
   border: 1px solid var(--border);
   flex-shrink: 0;
 }
+
+/* Form validation: labels mark required fields; invalid fields light up
+   after the user leaves them (:user-invalid) or tries to submit
+   (.show-invalid, set by the checkout form). */
+label.required::after {
+  content: " *";
+  color: var(--bad);
+}
+
+form.show-invalid input:invalid,
+form.show-invalid select:invalid,
+input:user-invalid {
+  border-color: var(--bad);
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.field-error {
+  display: none;
+  color: var(--bad);
+  font-size: 0.85rem;
+  margin: 0.3rem 0 0;
+}
+
+form.show-invalid input:invalid + .field-error,
+input:user-invalid + .field-error {
+  display: block;
+}

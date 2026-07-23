@@ -7,9 +7,17 @@ import { TENANT_SLUG } from "../../../lib/tenant";
 export function CheckoutForm({ slug }: { slug: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showInvalid, setShowInvalid] = useState(false);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    // noValidate suppresses the browser's popup bubbles; instead the
+    // .show-invalid class lights up every missing/invalid field at once.
+    if (!e.currentTarget.checkValidity()) {
+      setShowInvalid(true);
+      setError("Please fill in the highlighted fields.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
 
@@ -42,14 +50,16 @@ export function CheckoutForm({ slug }: { slug: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit}>
+    <form onSubmit={onSubmit} noValidate className={showInvalid ? "show-invalid" : undefined}>
       <h2 style={{ marginTop: 0 }}>Get your tickets</h2>
 
-      <label htmlFor="buyer_name">Full name</label>
+      <label htmlFor="buyer_name" className="required">Full name</label>
       <input id="buyer_name" name="buyer_name" required minLength={2} />
+      <p className="field-error">Please enter your full name</p>
 
-      <label htmlFor="buyer_email">Email (tickets are sent here)</label>
+      <label htmlFor="buyer_email" className="required">Email (tickets are sent here)</label>
       <input id="buyer_email" name="buyer_email" type="email" required />
+      <p className="field-error">Enter a valid email address</p>
 
       <label htmlFor="buyer_phone">Phone (optional)</label>
       <input id="buyer_phone" name="buyer_phone" type="tel" />

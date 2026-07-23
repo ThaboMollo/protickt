@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, NgForm } from '@angular/forms';
 import { Router } from '@angular/router';
 import { SupabaseService } from '../../services/supabase.service';
 
@@ -9,11 +9,14 @@ import { SupabaseService } from '../../services/supabase.service';
   template: `
     <div class="card" style="max-width: 420px; margin: 3rem auto;">
       <h1>Sign in</h1>
-      <form (ngSubmit)="submit()">
-        <label for="email">Email</label>
-        <input id="email" type="email" name="email" [(ngModel)]="email" required />
+      <form #f="ngForm" (ngSubmit)="submit(f)">
+        <label for="email" class="required">Email</label>
+        <input id="email" type="email" name="email" [(ngModel)]="email" #emailCtl="ngModel" required email />
+        @if (emailCtl.errors?.['email'] && emailCtl.touched) {
+          <p class="field-error">Enter a valid email address</p>
+        }
 
-        <label for="password">Password</label>
+        <label for="password" class="required">Password</label>
         <input
           id="password"
           type="password"
@@ -42,7 +45,12 @@ export class LoginPage {
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
 
-  protected async submit(): Promise<void> {
+  protected async submit(form: NgForm): Promise<void> {
+    if (form.invalid) {
+      form.form.markAllAsTouched();
+      this.error.set('Please fill in the highlighted fields.');
+      return;
+    }
     this.busy.set(true);
     this.error.set(null);
     const message = await this.supabase.signIn(this.email, this.password);
