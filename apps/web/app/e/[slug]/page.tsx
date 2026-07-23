@@ -1,9 +1,13 @@
 import { notFound } from "next/navigation";
 import { formatMoney, type PublicEvent } from "@protickt/shared";
 import { apiGet } from "../../../lib/api";
+import { TENANT_SLUG } from "../../../lib/tenant";
 import { CheckoutForm } from "./checkout-form";
 
-type EventWithAvailability = PublicEvent & { sold_out: boolean };
+type EventWithAvailability = PublicEvent & {
+  sold_out: boolean;
+  sales_closed: boolean;
+};
 
 export default async function EventPage({
   params,
@@ -11,7 +15,10 @@ export default async function EventPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const event = await apiGet<EventWithAvailability>(`/events/${slug}`);
+  // Tenant-scoped: another organizer's event slug 404s on this site.
+  const event = await apiGet<EventWithAvailability>(
+    `/events/${slug}?tenant=${encodeURIComponent(TENANT_SLUG)}`,
+  );
   if (!event) notFound();
 
   // Truthy check (not `!== null`): an API that predates the flyer migration
@@ -67,9 +74,19 @@ export default async function EventPage({
               </>
             )}
           </p>
-          {event.sold_out && <span className="status-bad">Sold out</span>}
+          {event.sales_closed ? (
+            <span className="status-bad">Sales closed</span>
+          ) : (
+            event.sold_out && <span className="status-bad">Sold out</span>
+          )}
         </div>
-        {!event.sold_out && <CheckoutForm slug={event.slug} />}
+        {event.sales_closed ? (
+          <p className="meta">
+            This event has already taken place — tickets are no longer on sale.
+          </p>
+        ) : (
+          !event.sold_out && <CheckoutForm slug={event.slug} />
+        )}
       </div>
     </>
   );

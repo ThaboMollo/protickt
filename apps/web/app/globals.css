@@ -286,3 +286,56 @@ button.primary:disabled {
 a {
   color: var(--accent);
 }
+
+.logo-img {
+  height: 2rem;
+  display: block;
+}
+
+.site-footer {
+  border-top: 1px solid var(--border);
+  margin-top: 3rem;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.site-footer a {
+  color: var(--muted);
+  margin: 0 0.6rem;
+  text-transform: capitalize;
+}
+
+.site-footer .powered-by {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.event-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.event-card {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.event-card h2 {
+  margin: 0 0 0.4rem;
+}
+
+.event-card .price {
+  margin: 0.6rem 0 0;
+}
+
+.event-card-flyer {
+  width: 5.5rem;
+  height: 5.5rem;
+  object-fit: cover;
+  border-radius: 0.6rem;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}

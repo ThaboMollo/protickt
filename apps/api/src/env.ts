@@ -11,12 +11,12 @@ export const env = {
   get supabaseServiceRoleKey() {
     return required("SUPABASE_SERVICE_ROLE_KEY");
   },
-  get paystackSecretKey() {
-    return required("PAYSTACK_SECRET_KEY");
-  },
-  /** Buyer-facing Next.js app, e.g. https://protickt.app */
-  get webUrl() {
-    return process.env.WEB_URL ?? "http://localhost:3000";
+  /**
+   * Master key for encrypting per-organization Paystack keys at rest.
+   * 32 bytes, base64 — generate with `openssl rand -base64 32`.
+   */
+  get paystackKeyEncryptionKey() {
+    return required("PAYSTACK_KEY_ENCRYPTION_KEY");
   },
   get corsOrigins(): string[] {
     return (

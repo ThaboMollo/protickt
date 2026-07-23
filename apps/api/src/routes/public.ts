@@ -2,32 +2,41 @@ import { Router } from "express";
 import {
   checkoutInputSchema,
   PENDING_ORDER_TTL_MINUTES,
+  ticketSalesClosed,
   type OrderStatusResponse,
   type PublicEvent,
   type TicketViewResponse,
 } from "@protickt/shared";
-import { env } from "../env.js";
 import { supabase } from "../lib/supabase.js";
+import { orgPaystackSecret, type OrgRow } from "../lib/orgs.js";
 import { initializeTransaction } from "../services/paystack.js";
 
 export const publicRouter = Router();
 
 // GET /events/:slug — public event page data (published events only).
+// `?tenant=<orgSlug>` scopes the lookup to that org, so one tenant's site
+// 404s another tenant's events. Optional for backwards compatibility with
+// deployed buyer sites that don't send it yet.
 publicRouter.get("/events/:slug", async (req, res) => {
   const { data: event, error } = await supabase()
     .from("events")
     .select(
-      "id, slug, name, description, venue, starts_at, price_cents, currency, capacity, flyer_url, created_at",
+      "id, slug, name, description, venue, starts_at, price_cents, currency, capacity, flyer_url, created_at, organizations!inner ( slug )",
     )
     .eq("slug", req.params.slug)
     .eq("status", "published")
     .maybeSingle();
 
   if (error) throw error;
-  if (!event) {
+
+  const tenant = typeof req.query.tenant === "string" ? req.query.tenant : null;
+  const orgSlug = (event?.organizations as unknown as { slug: string } | null)
+    ?.slug;
+  if (!event || (tenant && orgSlug !== tenant)) {
     res.status(404).json({ error: "Event not found" });
     return;
   }
+  delete (event as Record<string, unknown>).organizations;
 
   const { data: taken } = await supabase().rpc("seats_taken", {
     p_event_id: event.id,
@@ -37,7 +46,11 @@ publicRouter.get("/events/:slug", async (req, res) => {
   const sold_out =
     event.capacity != null && (taken as number ?? 0) >= event.capacity;
 
-  res.json({ ...(event as PublicEvent), sold_out });
+  res.json({
+    ...(event as PublicEvent),
+    sold_out,
+    sales_closed: ticketSalesClosed(event.starts_at),
+  });
 });
 
 // POST /checkout — create a pending order and a Paystack checkout session.
@@ -51,12 +64,38 @@ publicRouter.post("/checkout", async (req, res) => {
 
   const { data: event } = await supabase()
     .from("events")
-    .select("id, name, slug, price_cents, currency, capacity, status")
+    .select(
+      "id, name, slug, starts_at, price_cents, currency, capacity, status, organizations!inner ( id, slug, site_url, status, paystack_secret_key_enc )",
+    )
     .eq("slug", input.event_slug)
     .maybeSingle();
 
-  if (!event || event.status !== "published") {
+  const org = event?.organizations as unknown as Pick<
+    OrgRow,
+    "id" | "slug" | "site_url" | "status" | "paystack_secret_key_enc"
+  > | null;
+
+  if (
+    !event ||
+    !org ||
+    event.status !== "published" ||
+    (input.tenant && org.slug !== input.tenant)
+  ) {
     res.status(404).json({ error: "Event not found or not open for sales" });
+    return;
+  }
+
+  const paystackSecret =
+    org.status === "active" ? orgPaystackSecret(org) : null;
+  if (!paystackSecret) {
+    res.status(503).json({
+      error: "Payments are not configured for this event yet, please try later",
+    });
+    return;
+  }
+
+  if (ticketSalesClosed(event.starts_at)) {
+    res.status(409).json({ error: "Ticket sales for this event have closed" });
     return;
   }
 
@@ -91,12 +130,14 @@ publicRouter.post("/checkout", async (req, res) => {
 
   try {
     // The order id doubles as the Paystack reference: webhook → reference → order.
-    const init = await initializeTransaction({
+    // Charged on the organization's own Paystack account; the buyer lands
+    // back on the org's branded site afterwards.
+    const init = await initializeTransaction(paystackSecret, {
       email: input.buyer_email,
       amountCents,
       currency: event.currency,
       reference: order.id,
-      callbackUrl: `${env.webUrl}/success?order=${order.id}`,
+      callbackUrl: `${org.site_url.replace(/\/$/, "")}/success?order=${order.id}`,
       metadata: { event_slug: event.slug, event_name: event.name },
     });
 

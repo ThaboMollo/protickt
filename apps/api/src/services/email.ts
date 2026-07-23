@@ -10,6 +10,22 @@ interface TicketEmailParams {
   amountCents: number;
   currency: string;
   ticketCodes: string[];
+  /** Organization the event belongs to — sender name and ticket links. */
+  org: {
+    name: string;
+    site_url: string;
+    support_email: string | null;
+  };
+}
+
+/**
+ * Sender: the org's display name over our verified sending address, so
+ * "Wild Media Agency <tickets@...>" without per-tenant DNS. EMAIL_FROM
+ * stays the source of the address part.
+ */
+function fromHeader(orgName: string): string {
+  const address = env.emailFrom.match(/<([^>]+)>/)?.[1] ?? env.emailFrom;
+  return `${orgName.replaceAll('"', "'")} <${address}>`;
 }
 
 /**
@@ -19,7 +35,7 @@ interface TicketEmailParams {
  */
 export async function sendTicketEmail(params: TicketEmailParams): Promise<void> {
   const links = params.ticketCodes
-    .map((code) => `${env.webUrl}/t/${code}`)
+    .map((code) => `${params.org.site_url.replace(/\/$/, "")}/t/${code}`)
     .map((url, i) => `<li><a href="${url}">Ticket ${i + 1}: ${url}</a></li>`)
     .join("");
 
@@ -48,10 +64,13 @@ export async function sendTicketEmail(params: TicketEmailParams): Promise<void> 
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: env.emailFrom,
+      from: fromHeader(params.org.name),
       to: [params.to],
       subject: `Your ticket for ${params.eventName}`,
       html,
+      ...(params.org.support_email
+        ? { reply_to: params.org.support_email }
+        : {}),
     }),
   });
   if (!res.ok) {

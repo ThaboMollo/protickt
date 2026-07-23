@@ -42,11 +42,21 @@ export class SupabaseService {
     return data.session?.access_token ?? null;
   }
 
-  /** Upload a flyer to storage using a signed token from the API. */
-  async uploadFlyer(path: string, token: string, file: File): Promise<string | null> {
+  /** Upload a file to a storage bucket using a signed token from the API. */
+  async uploadSigned(
+    bucket: string,
+    path: string,
+    token: string,
+    file: File,
+  ): Promise<string | null> {
     const { error } = await this.client.storage
-      .from(FLYER_BUCKET)
+      .from(bucket)
       .uploadToSignedUrl(path, token, file);
     return error ? error.message : null;
+  }
+
+  /** Upload a flyer to storage using a signed token from the API. */
+  uploadFlyer(path: string, token: string, file: File): Promise<string | null> {
+    return this.uploadSigned(FLYER_BUCKET, path, token, file);
   }
 }

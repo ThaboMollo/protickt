@@ -1,5 +1,4 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { env } from "../env.js";
 
 const PAYSTACK_BASE = "https://api.paystack.co";
 
@@ -22,11 +21,18 @@ export interface VerifyResult {
   currency: string;
 }
 
-async function paystackFetch<T>(path: string, init?: RequestInit): Promise<T> {
+// Every call takes the secret key explicitly: each organization pays through
+// its own Paystack account, so there is no process-wide key.
+
+async function paystackFetch<T>(
+  secretKey: string,
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
   const res = await fetch(`${PAYSTACK_BASE}${path}`, {
     ...init,
     headers: {
-      Authorization: `Bearer ${env.paystackSecretKey}`,
+      Authorization: `Bearer ${secretKey}`,
       "Content-Type": "application/json",
       ...init?.headers,
     },
@@ -38,15 +44,18 @@ async function paystackFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return body.data;
 }
 
-export function initializeTransaction(params: {
-  email: string;
-  amountCents: number;
-  currency: string;
-  reference: string;
-  callbackUrl: string;
-  metadata?: Record<string, unknown>;
-}): Promise<InitializeResult> {
-  return paystackFetch<InitializeResult>("/transaction/initialize", {
+export function initializeTransaction(
+  secretKey: string,
+  params: {
+    email: string;
+    amountCents: number;
+    currency: string;
+    reference: string;
+    callbackUrl: string;
+    metadata?: Record<string, unknown>;
+  },
+): Promise<InitializeResult> {
+  return paystackFetch<InitializeResult>(secretKey, "/transaction/initialize", {
     method: "POST",
     body: JSON.stringify({
       email: params.email,
@@ -59,21 +68,24 @@ export function initializeTransaction(params: {
   });
 }
 
-export function verifyTransaction(reference: string): Promise<VerifyResult> {
+export function verifyTransaction(
+  secretKey: string,
+  reference: string,
+): Promise<VerifyResult> {
   return paystackFetch<VerifyResult>(
+    secretKey,
     `/transaction/verify/${encodeURIComponent(reference)}`,
   );
 }
 
 /** Paystack signs webhooks with HMAC-SHA512 of the raw body using the secret key. */
 export function isValidWebhookSignature(
+  secretKey: string,
   rawBody: Buffer,
   signature: string | undefined,
 ): boolean {
   if (!signature) return false;
-  const expected = createHmac("sha512", env.paystackSecretKey)
-    .update(rawBody)
-    .digest("hex");
+  const expected = createHmac("sha512", secretKey).update(rawBody).digest("hex");
   const a = Buffer.from(expected);
   const b = Buffer.from(signature);
   return a.length === b.length && timingSafeEqual(a, b);

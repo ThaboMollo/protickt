@@ -7,9 +7,11 @@ import {
   type Currency,
   type EventInput,
   type FlyerContentType,
+  type OrganizationRecord,
 } from '@protickt/shared';
 import { ApiService } from '../../services/api.service';
 import { SupabaseService } from '../../services/supabase.service';
+import { MeService } from '../../services/me.service';
 
 @Component({
   selector: 'app-event-form',
@@ -19,6 +21,15 @@ import { SupabaseService } from '../../services/supabase.service';
 
     <div class="card">
       <form (ngSubmit)="submit()">
+        @if (!eventId && orgs().length > 0) {
+          <label for="organization">Organization (whose site sells this event)</label>
+          <select id="organization" name="organization" [(ngModel)]="organizationId">
+            @for (org of orgs(); track org.id) {
+              <option [value]="org.id">{{ org.name }}</option>
+            }
+          </select>
+        }
+
         <label for="name">Event name</label>
         <input id="name" name="name" [(ngModel)]="name" required (input)="suggestSlug()" />
 
@@ -83,6 +94,7 @@ import { SupabaseService } from '../../services/supabase.service';
 export class EventFormPage {
   private readonly api = inject(ApiService);
   private readonly supabase = inject(SupabaseService);
+  private readonly meService = inject(MeService);
   private readonly router = inject(Router);
 
   protected readonly eventId: string | null =
@@ -102,11 +114,25 @@ export class EventFormPage {
   protected flyerUrl: string | null = null;
   protected flyerFile: File | null = null;
 
+  // Super admins can create events on behalf of any organization; org admins
+  // never see this — the API pins their events to their own org.
+  protected readonly orgs = signal<OrganizationRecord[]>([]);
+  protected organizationId: string | null = null;
+
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
   private slugTouched = false;
 
   constructor() {
+    if (!this.eventId) {
+      this.meService.load().then((me) => {
+        if (me?.role !== 'super_admin') return;
+        this.api.listOrgs().then((orgs) => {
+          this.orgs.set(orgs);
+          this.organizationId ??= me.org?.id ?? orgs[0]?.id ?? null;
+        });
+      });
+    }
     if (this.eventId) {
       this.slugTouched = true;
       this.api.getEvent(this.eventId).then((event) => {
@@ -169,7 +195,11 @@ export class EventFormPage {
     try {
       const saved = this.eventId
         ? await this.api.updateEvent(this.eventId, input)
-        : await this.api.createEvent(input);
+        : await this.api.createEvent(
+            this.organizationId
+              ? { ...input, organization_id: this.organizationId }
+              : input,
+          );
 
       if (this.flyerFile) {
         await this.uploadFlyer(saved.id, this.flyerFile);

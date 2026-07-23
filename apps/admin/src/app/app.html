@@ -1,9 +1,17 @@
 <header class="topbar">
-  <a routerLink="/" class="logo">Pro<span>Tickt</span> <small>admin</small></a>
+  <a routerLink="/" class="logo">
+    Pro<span>Tickt</span> <small>admin</small>
+    @if (meService.me()?.org; as org) {
+      <small class="org-name">· {{ org.name }}</small>
+    }
+  </a>
   @if (supabase.session()) {
     <nav>
       <a routerLink="/events" routerLinkActive="active">Events</a>
       <a routerLink="/scan" routerLinkActive="active">Scan</a>
+      @if (meService.me()?.role === 'super_admin') {
+        <a routerLink="/orgs" routerLinkActive="active">Organizations</a>
+      }
       <button class="link" (click)="signOut()">Sign out</button>
     </nav>
   }

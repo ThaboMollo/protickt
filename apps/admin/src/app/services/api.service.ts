@@ -1,5 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import type {
+  AdminMeResponse,
+  AdminRole,
   CheckinResponse,
   EventInput,
   EventRecord,
@@ -7,7 +9,12 @@ import type {
   EventUpdate,
   FlyerContentType,
   FlyerUploadUrlResponse,
+  LogoContentType,
   OrderRecord,
+  OrganizationRecord,
+  OrgInput,
+  OrgPaystackKeys,
+  OrgUpdate,
 } from '@protickt/shared';
 import { environment } from '../../environments/environment';
 import { SupabaseService } from './supabase.service';
@@ -42,6 +49,10 @@ export class ApiService {
     return data as T;
   }
 
+  getMe(): Promise<AdminMeResponse> {
+    return this.request('GET', '/admin/me');
+  }
+
   listEvents(): Promise<EventRecord[]> {
     return this.request('GET', '/admin/events');
   }
@@ -50,7 +61,8 @@ export class ApiService {
     return this.request('GET', `/admin/events/${id}`);
   }
 
-  createEvent(input: EventInput): Promise<EventRecord> {
+  /** organization_id is honoured by the API for super admins only. */
+  createEvent(input: EventInput & { organization_id?: string }): Promise<EventRecord> {
     return this.request('POST', '/admin/events', input);
   }
 
@@ -80,5 +92,43 @@ export class ApiService {
       code: rawCode,
       event_id: eventId,
     });
+  }
+
+  // -- Organization management (super admin only) ---------------------------
+
+  listOrgs(): Promise<OrganizationRecord[]> {
+    return this.request('GET', '/admin/orgs');
+  }
+
+  createOrg(input: OrgInput): Promise<OrganizationRecord> {
+    return this.request('POST', '/admin/orgs', input);
+  }
+
+  updateOrg(id: string, input: OrgUpdate): Promise<OrganizationRecord> {
+    return this.request('PATCH', `/admin/orgs/${id}`, input);
+  }
+
+  /** Write-only: the API never returns key material back. */
+  setOrgPaystackKeys(id: string, keys: OrgPaystackKeys): Promise<OrganizationRecord> {
+    return this.request('PUT', `/admin/orgs/${id}/paystack-keys`, keys);
+  }
+
+  createLogoUploadUrl(
+    orgId: string,
+    contentType: LogoContentType,
+  ): Promise<FlyerUploadUrlResponse> {
+    return this.request('POST', `/admin/orgs/${orgId}/logo-upload-url`, {
+      content_type: contentType,
+    });
+  }
+
+  listOrgAdmins(
+    orgId: string,
+  ): Promise<{ user_id: string; role: AdminRole; email: string | null; created_at: string }[]> {
+    return this.request('GET', `/admin/orgs/${orgId}/admins`);
+  }
+
+  addOrgAdmin(orgId: string, email: string, role: AdminRole): Promise<unknown> {
+    return this.request('POST', `/admin/orgs/${orgId}/admins`, { email, role });
   }
 }

@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './auth.guard';
+import { superAdminGuard } from './super-admin.guard';
 
 export const routes: Routes = [
   {
@@ -35,6 +36,24 @@ export const routes: Routes = [
         path: 'scan',
         loadComponent: () =>
           import('./pages/scanner/scanner').then((m) => m.ScannerPage),
+      },
+      {
+        path: 'orgs',
+        canActivate: [superAdminGuard],
+        loadComponent: () =>
+          import('./pages/orgs/orgs-list').then((m) => m.OrgsListPage),
+      },
+      {
+        path: 'orgs/new',
+        canActivate: [superAdminGuard],
+        loadComponent: () =>
+          import('./pages/orgs/org-form').then((m) => m.OrgFormPage),
+      },
+      {
+        path: 'orgs/:id/edit',
+        canActivate: [superAdminGuard],
+        loadComponent: () =>
+          import('./pages/orgs/org-form').then((m) => m.OrgFormPage),
       },
     ],
   },

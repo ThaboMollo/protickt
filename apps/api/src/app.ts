@@ -9,6 +9,7 @@ import { publicRouter } from "./routes/public.js";
 import { adminRouter } from "./routes/admin.js";
 import { webhooksRouter } from "./routes/webhooks.js";
 import { internalRouter } from "./routes/internal.js";
+import { tenantsRouter } from "./routes/tenants.js";
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/", publicRouter);
+app.use("/tenants", tenantsRouter);
 app.use("/admin", adminRouter);
 app.use("/webhooks", webhooksRouter);
 app.use("/internal", internalRouter);

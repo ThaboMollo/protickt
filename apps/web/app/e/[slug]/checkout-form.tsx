@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { API_URL } from "../../../lib/api";
+import { TENANT_SLUG } from "../../../lib/tenant";
 
 export function CheckoutForm({ slug }: { slug: string }) {
   const [submitting, setSubmitting] = useState(false);
@@ -19,6 +20,7 @@ export function CheckoutForm({ slug }: { slug: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           event_slug: slug,
+          tenant: TENANT_SLUG,
           buyer_name: form.get("buyer_name"),
           buyer_email: form.get("buyer_email"),
           buyer_phone: (form.get("buyer_phone") as string) || null,
