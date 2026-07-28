@@ -12,6 +12,7 @@ import {
 import { supabase } from "../lib/supabase.js";
 import { encryptSecret } from "../lib/orgSecrets.js";
 import { getOrgById, ORG_COLUMNS, toOrganizationRecord } from "../lib/orgs.js";
+import { env } from "../env.js";
 
 // Mounted at /admin/orgs behind requireAdmin + requireSuperAdmin: this is
 // the proTickt-staff onboarding surface for new client organizations.
@@ -37,7 +38,7 @@ superAdminRouter.post("/", async (req, res) => {
 
   const { data, error } = await supabase()
     .from("organizations")
-    .insert(parsed.data)
+    .insert({ ...parsed.data, default_currency: env.currency })
     .select(ORG_COLUMNS)
     .single();
 
@@ -62,7 +63,7 @@ superAdminRouter.patch("/:id", async (req, res) => {
 
   const { data, error } = await supabase()
     .from("organizations")
-    .update(parsed.data)
+    .update({ ...parsed.data, default_currency: env.currency })
     .eq("id", req.params.id)
     .select(ORG_COLUMNS)
     .maybeSingle();

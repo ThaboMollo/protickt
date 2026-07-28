@@ -1,3 +1,5 @@
+import { SUPPORTED_CURRENCIES, type Currency } from "@protickt/shared";
+
 function required(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`Missing required env var: ${name}`);
@@ -5,6 +7,15 @@ function required(name: string): string {
 }
 
 export const env = {
+  get currency(): Currency {
+    const currency = required("CURRENCY").trim().toUpperCase();
+    if (!SUPPORTED_CURRENCIES.includes(currency as Currency)) {
+      throw new Error(
+        `Invalid CURRENCY: ${currency}. Supported currencies: ${SUPPORTED_CURRENCIES.join(", ")}`,
+      );
+    }
+    return currency as Currency;
+  },
   get supabaseUrl() {
     return required("SUPABASE_URL");
   },

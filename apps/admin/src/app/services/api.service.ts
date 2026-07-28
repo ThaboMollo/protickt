@@ -1,10 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import type {
+  AdminEventRecord,
   AdminMeResponse,
   AdminRole,
   CheckinResponse,
   EventInput,
-  EventRecord,
   EventStats,
   EventUpdate,
   FlyerContentType,
@@ -53,20 +53,20 @@ export class ApiService {
     return this.request('GET', '/admin/me');
   }
 
-  listEvents(): Promise<EventRecord[]> {
+  listEvents(): Promise<AdminEventRecord[]> {
     return this.request('GET', '/admin/events');
   }
 
-  getEvent(id: string): Promise<EventRecord> {
+  getEvent(id: string): Promise<AdminEventRecord> {
     return this.request('GET', `/admin/events/${id}`);
   }
 
   /** organization_id is honoured by the API for super admins only. */
-  createEvent(input: EventInput & { organization_id?: string }): Promise<EventRecord> {
+  createEvent(input: EventInput & { organization_id?: string }): Promise<AdminEventRecord> {
     return this.request('POST', '/admin/events', input);
   }
 
-  updateEvent(id: string, input: EventUpdate): Promise<EventRecord> {
+  updateEvent(id: string, input: EventUpdate): Promise<AdminEventRecord> {
     return this.request('PATCH', `/admin/events/${id}`, input);
   }
 

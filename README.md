@@ -48,6 +48,10 @@ Create an account at [paystack.com](https://paystack.com), grab the **test** sec
 - `apps/web`: copy `.env.example` → `.env.local` (defaults work for local dev).
 - `apps/admin`: edit `src/environments/environment.ts` with your Supabase URL + anon key (the anon key is publishable — it can do nothing against the RLS-locked tables).
 
+Set `CURRENCY` in `apps/api/.env` to the ISO currency code used for organizations,
+events, checkout, and payment emails. Supported values are `ZAR`, `BWP`, `USD`,
+`NGN`, `GHS`, and `KES`.
+
 ## Run locally
 
 ```sh

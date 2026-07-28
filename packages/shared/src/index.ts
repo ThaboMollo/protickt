@@ -14,7 +14,7 @@ export const EVENT_STATUSES = ["draft", "published", "closed"] as const;
  * merchant country — charging a currency not enabled on the Paystack account
  * fails at checkout, so keep this list to currencies the account supports.
  */
-export const SUPPORTED_CURRENCIES = ["ZAR", "USD", "NGN", "GHS", "KES"] as const;
+export const SUPPORTED_CURRENCIES = ["ZAR", "BWP", "USD", "NGN", "GHS", "KES"] as const;
 
 /** Storage bucket that event flyers are uploaded to (public read). */
 export const FLYER_BUCKET = "event-flyers";
@@ -362,6 +362,20 @@ export interface AdminMeResponse {
   user_id: string;
   role: AdminRole;
   org: { id: string; slug: string; name: string } | null;
+}
+
+/** The owning org, embedded in admin event payloads: identifies whose event
+ *  it is and which site sells it (buyer links = site_url + /e/slug). */
+export interface EventOrgSummary {
+  id: string;
+  slug: string;
+  name: string;
+  site_url: string;
+}
+
+/** Event as returned by the admin API — always carries its organization. */
+export interface AdminEventRecord extends EventRecord {
+  organization: EventOrgSummary;
 }
 
 // ---------------------------------------------------------------------------

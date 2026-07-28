@@ -1,10 +1,9 @@
 import { Component, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import type { EventRecord, EventStats, EventStatus, OrderRecord } from '@protickt/shared';
+import type { AdminEventRecord, EventStats, EventStatus, OrderRecord } from '@protickt/shared';
 import { formatMoney } from '@protickt/shared';
 import { ApiService } from '../../services/api.service';
-import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-event-detail',
@@ -17,6 +16,7 @@ import { environment } from '../../../environments/environment';
       </div>
 
       <div class="card">
+        <p class="meta">🏢 {{ ev.organization.name }} <span class="badge draft">{{ ev.organization.slug }}</span></p>
         <p class="meta">📅 {{ ev.starts_at | date: 'full' }}</p>
         @if (ev.venue) {
           <p class="meta">📍 {{ ev.venue }}</p>
@@ -49,7 +49,7 @@ import { environment } from '../../../environments/environment';
         </p>
 
         @if (ev.status === 'published') {
-          <label>Share this link with buyers</label>
+          <label>Share this link with buyers (on {{ ev.organization.name }}'s site)</label>
           <input readonly [value]="shareLink(ev)" (click)="copyLink(ev)" />
           @if (copied()) {
             <p class="meta">Copied to clipboard ✓</p>
@@ -150,7 +150,7 @@ import { environment } from '../../../environments/environment';
 export class EventDetailPage {
   private readonly api = inject(ApiService);
 
-  protected readonly event = signal<EventRecord | null>(null);
+  protected readonly event = signal<AdminEventRecord | null>(null);
   protected readonly stats = signal<EventStats | null>(null);
   protected readonly orders = signal<OrderRecord[]>([]);
   protected readonly ordersLoading = signal(true);
@@ -185,26 +185,27 @@ export class EventDetailPage {
     }
   }
 
-  protected shareLink(event: EventRecord): string {
-    return `${environment.webUrl}/e/${event.slug}`;
+  /** Buyer link on the owning org's site — each tenant sells on its own domain. */
+  protected shareLink(event: AdminEventRecord): string {
+    return `${event.organization.site_url.replace(/\/$/, '')}/e/${event.slug}`;
   }
 
-  protected async copyLink(event: EventRecord): Promise<void> {
+  protected async copyLink(event: AdminEventRecord): Promise<void> {
     await navigator.clipboard.writeText(this.shareLink(event));
     this.copied.set(true);
   }
 
-  protected price(event: EventRecord): string {
+  protected price(event: AdminEventRecord): string {
     return event.price_cents === 0
       ? 'Free'
       : formatMoney(event.price_cents, event.currency);
   }
 
-  protected revenue(stats: EventStats, event: EventRecord): string {
+  protected revenue(stats: EventStats, event: AdminEventRecord): string {
     return formatMoney(stats.revenue_cents, event.currency);
   }
 
-  protected amount(order: OrderRecord, event: EventRecord): string {
+  protected amount(order: OrderRecord, event: AdminEventRecord): string {
     return formatMoney(order.amount_cents, event.currency);
   }
 }

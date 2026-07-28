@@ -7,6 +7,7 @@ import {
 import { generateTicketCode } from "../lib/ticketCode.js";
 import { sendTicketEmail } from "../services/email.js";
 import { getOrgBySlug, orgPaystackSecret, type OrgRow } from "../lib/orgs.js";
+import { env } from "../env.js";
 
 export const webhooksRouter = Router();
 
@@ -158,7 +159,7 @@ async function handleChargeSuccess(
     eventStartsAt: event?.starts_at ?? new Date().toISOString(),
     venue: event?.venue ?? null,
     amountCents: order.amount_cents,
-    currency: event?.currency ?? "ZAR",
+    currency: event?.currency ?? env.currency,
     ticketCodes: (tickets ?? []).map((t) => t.code),
     org: {
       name: org.name,

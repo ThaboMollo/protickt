@@ -21,6 +21,7 @@ import {
 } from "../middleware/adminAuth.js";
 import { getOrgById } from "../lib/orgs.js";
 import { superAdminRouter } from "./superAdmin.js";
+import { env } from "../env.js";
 
 export const adminRouter = Router();
 
@@ -40,6 +41,15 @@ adminRouter.get("/me", async (req, res) => {
   res.json(response);
 });
 
+// Admin event payloads embed the owning org so the UI can say whose event it
+// is and build buyer links from that org's site, not ProTickt's.
+const EVENT_WITH_ORG = "*, organizations ( id, slug, name, site_url )";
+
+function withOrganization(row: Record<string, unknown>): Record<string, unknown> {
+  const { organizations, ...event } = row;
+  return { ...event, organization: organizations };
+}
+
 /** Load an event and 404 unless this admin's org owns it (super_admin: any). */
 async function findAccessibleEvent(
   req: Request,
@@ -47,25 +57,25 @@ async function findAccessibleEvent(
 ): Promise<Record<string, unknown> | null> {
   const { data: event } = await supabase()
     .from("events")
-    .select("*")
+    .select(EVENT_WITH_ORG)
     .eq("id", eventId)
     .maybeSingle();
   if (!event || !canAccessOrg(req, event.organization_id)) return null;
-  return event;
+  return withOrganization(event);
 }
 
 // GET /admin/events
 adminRouter.get("/events", async (req, res) => {
   let query = supabase()
     .from("events")
-    .select("*")
+    .select(EVENT_WITH_ORG)
     .order("starts_at", { ascending: false });
   if (req.adminRole !== "super_admin") {
     query = query.eq("organization_id", req.adminOrgId!);
   }
   const { data, error } = await query;
   if (error) throw error;
-  res.json(data);
+  res.json((data ?? []).map(withOrganization));
 });
 
 // POST /admin/events
@@ -84,23 +94,15 @@ adminRouter.post("/events", async (req, res) => {
       ? req.body.organization_id
       : req.adminOrgId!;
 
-  // The zod default is ZAR; when the form didn't send a currency, prefer the
-  // org's configured default instead.
-  let currency = parsed.data.currency;
-  if (req.body.currency == null) {
-    const org = await getOrgById(orgId);
-    if (org) currency = org.default_currency as typeof currency;
-  }
-
   const { data, error } = await supabase()
     .from("events")
     .insert({
       ...parsed.data,
-      currency,
+      currency: env.currency,
       organization_id: orgId,
       created_by: req.adminId,
     })
-    .select("*")
+    .select(EVENT_WITH_ORG)
     .single();
 
   if (error) {
@@ -112,7 +114,7 @@ adminRouter.post("/events", async (req, res) => {
     }
     throw error;
   }
-  res.status(201).json(data);
+  res.status(201).json(withOrganization(data));
 });
 
 // GET /admin/events/:id
@@ -141,9 +143,9 @@ adminRouter.patch("/events/:id", async (req, res) => {
 
   const { data, error } = await supabase()
     .from("events")
-    .update(parsed.data)
+    .update({ ...parsed.data, currency: env.currency })
     .eq("id", req.params.id)
-    .select("*")
+    .select(EVENT_WITH_ORG)
     .maybeSingle();
 
   if (error) {
@@ -159,7 +161,7 @@ adminRouter.patch("/events/:id", async (req, res) => {
     res.status(404).json({ error: "Event not found" });
     return;
   }
-  res.json(data);
+  res.json(withOrganization(data));
 });
 
 // POST /admin/events/:id/flyer-upload-url — mint a signed storage upload URL.

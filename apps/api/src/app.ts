@@ -11,6 +11,10 @@ import { webhooksRouter } from "./routes/webhooks.js";
 import { internalRouter } from "./routes/internal.js";
 import { tenantsRouter } from "./routes/tenants.js";
 
+// Validate deployment-wide configuration when the API boots, not on the first
+// request that happens to create or update an event.
+void env.currency;
+
 const app = express();
 
 app.use(cors({ origin: env.corsOrigins }));

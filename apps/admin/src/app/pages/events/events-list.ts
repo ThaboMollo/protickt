@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import type { EventRecord } from '@protickt/shared';
+import type { AdminEventRecord } from '@protickt/shared';
 import { formatMoney } from '@protickt/shared';
 import { ApiService } from '../../services/api.service';
 
@@ -30,6 +30,7 @@ import { ApiService } from '../../services/api.service';
           <thead>
             <tr>
               <th>Event</th>
+              <th>Organization</th>
               <th>Starts</th>
               <th>Price</th>
               <th>Status</th>
@@ -41,6 +42,7 @@ import { ApiService } from '../../services/api.service';
                 <td>
                   <a [routerLink]="['/events', event.id]">{{ event.name }}</a>
                 </td>
+                <td>{{ event.organization.name }}</td>
                 <td>{{ event.starts_at | date: 'medium' }}</td>
                 <td>{{ price(event) }}</td>
                 <td>
@@ -57,7 +59,7 @@ import { ApiService } from '../../services/api.service';
 export class EventsListPage {
   private readonly api = inject(ApiService);
 
-  protected readonly events = signal<EventRecord[]>([]);
+  protected readonly events = signal<AdminEventRecord[]>([]);
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
 
@@ -69,7 +71,7 @@ export class EventsListPage {
       .finally(() => this.loading.set(false));
   }
 
-  protected price(event: EventRecord): string {
+  protected price(event: AdminEventRecord): string {
     return event.price_cents === 0
       ? 'Free'
       : formatMoney(event.price_cents, event.currency);
