@@ -54,6 +54,18 @@ import { MeService } from '../../services/me.service';
         <label for="starts_at" class="required">Starts at</label>
         <input id="starts_at" name="starts_at" type="datetime-local" [(ngModel)]="startsAt" required />
 
+        <label for="ends_at">Ends at (optional)</label>
+        <input
+          id="ends_at"
+          name="ends_at"
+          type="datetime-local"
+          [(ngModel)]="endsAt"
+          [min]="startsAt"
+        />
+        @if (endsAt && startsAt && endsAt <= startsAt) {
+          <p class="field-error">End time must be after the start time</p>
+        }
+
         <label for="currency">Currency</label>
         <select id="currency" name="currency" [(ngModel)]="currency">
           @for (code of currencies; track code) {
@@ -117,6 +129,7 @@ export class EventFormPage {
   protected description = '';
   protected venue = '';
   protected startsAt = '';
+  protected endsAt = '';
   protected priceRands: number | null = null;
   protected currency: Currency = 'ZAR';
   protected capacity: number | null = null;
@@ -135,7 +148,7 @@ export class EventFormPage {
    *  The signal flip also schedules change detection, so the inputs render
    *  already populated (zoneless CD won't re-render on a bare promise). */
   protected readonly loading = signal(false);
-  protected readonly skeletonFields = Array.from({ length: 7 });
+  protected readonly skeletonFields = Array.from({ length: 8 });
   private slugTouched = false;
 
   constructor() {
@@ -159,6 +172,7 @@ export class EventFormPage {
           this.description = event.description ?? '';
           this.venue = event.venue ?? '';
           this.startsAt = toDatetimeLocal(event.starts_at);
+          this.endsAt = event.ends_at ? toDatetimeLocal(event.ends_at) : '';
           this.priceRands = event.price_cents / 100;
           this.currency = event.currency as Currency;
           this.capacity = event.capacity;
@@ -201,6 +215,10 @@ export class EventFormPage {
       this.error.set('Please fill in the required fields highlighted above.');
       return;
     }
+    if (this.endsAt && this.endsAt <= this.startsAt) {
+      this.error.set('End time must be after the start time.');
+      return;
+    }
     this.busy.set(true);
     this.error.set(null);
 
@@ -210,6 +228,7 @@ export class EventFormPage {
       description: this.description || null,
       venue: this.venue || null,
       starts_at: new Date(this.startsAt).toISOString(),
+      ends_at: this.endsAt ? new Date(this.endsAt).toISOString() : null,
       price_cents: Math.round((this.priceRands ?? 0) * 100),
       currency: this.currency,
       capacity: this.capacity || null,

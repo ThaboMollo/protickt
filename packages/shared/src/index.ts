@@ -67,6 +67,7 @@ export interface EventRecord {
   description: string | null;
   venue: string | null;
   starts_at: string;
+  ends_at: string | null;
   price_cents: number;
   currency: string;
   capacity: number | null;
@@ -146,7 +147,7 @@ export interface CheckinResponse {
 // Input schemas (shared between API validation and frontend forms)
 // ---------------------------------------------------------------------------
 
-export const eventInputSchema = z.object({
+const eventInputShape = {
   name: z.string().min(2).max(200),
   slug: z
     .string()
@@ -156,15 +157,33 @@ export const eventInputSchema = z.object({
   description: z.string().max(5000).nullish(),
   venue: z.string().max(300).nullish(),
   starts_at: z.string().datetime({ offset: true }),
+  ends_at: z.string().datetime({ offset: true }).nullish(),
   price_cents: z.number().int().min(0),
   currency: z.enum(SUPPORTED_CURRENCIES).default("ZAR"),
   capacity: z.number().int().positive().nullish(),
   status: z.enum(EVENT_STATUSES).default("draft"),
   flyer_url: z.string().url().max(1000).nullish(),
-});
+};
+
+// An end time, when both are given, must come after the start. On updates
+// where only one side is present we can't compare, so the DB check is the
+// final backstop.
+const endsAfterStart = (data: { starts_at?: string; ends_at?: string | null }): boolean =>
+  !data.ends_at || !data.starts_at || new Date(data.ends_at) > new Date(data.starts_at);
+const endsAfterStartError = {
+  message: "End time must be after the start time",
+  path: ["ends_at"],
+};
+
+export const eventInputSchema = z
+  .object(eventInputShape)
+  .refine((data) => endsAfterStart(data), endsAfterStartError);
 export type EventInput = z.infer<typeof eventInputSchema>;
 
-export const eventUpdateSchema = eventInputSchema.partial();
+export const eventUpdateSchema = z
+  .object(eventInputShape)
+  .partial()
+  .refine((data) => endsAfterStart(data), endsAfterStartError);
 export type EventUpdate = z.infer<typeof eventUpdateSchema>;
 
 export const checkoutInputSchema = z.object({

@@ -21,7 +21,7 @@ publicRouter.get("/events/:slug", async (req, res) => {
   const { data: event, error } = await supabase()
     .from("events")
     .select(
-      "id, slug, name, description, venue, starts_at, price_cents, currency, capacity, flyer_url, created_at, organizations!inner ( slug )",
+      "id, slug, name, description, venue, starts_at, ends_at, price_cents, currency, capacity, flyer_url, created_at, organizations!inner ( slug )",
     )
     .eq("slug", req.params.slug)
     .eq("status", "published")
